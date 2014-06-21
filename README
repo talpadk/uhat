@@ -1,0 +1,145 @@
+uhat
+==================
+http://gaa.st/uhat
+
+For owners of Saitek/CH/etc flight yokes with hat switches. These hat switches
+are usually represented to the driver as axes, not buttons. Flight simulators
+like X-Plane can't use them this way, making the hat switch pretty much useless.
+
+Using uhat, you can map these axes to pairs of switches on a virtual joystick.
+It uses uinput to simulate this joystick. No separate packages required, just
+a kernel from the current century.
+
+
+Getting to know your joystick
+=============================
+
+First, find out which joystick device is your yoke:
+
+wilmer@ruby:~/src/bitlbee/devel$ grep ^[INH]: /proc/bus/input/devices
+I: Bus=0011 Vendor=0001 Product=0001 Version=ab41
+N: Name="AT Translated Set 2 keyboard"
+H: Handlers=sysrq kbd event0 
+[...]
+I: Bus=0003 Vendor=06a3 Product=0763 Version=0111
+N: Name="Saitek Saitek Pro Flight Rudder Pedals"
+H: Handlers=event10 js0 
+I: Bus=0003 Vendor=06a3 Product=0d67 Version=0100
+N: Name="HOLTEK Saitek Pro Flight Switch Panel"
+H: Handlers=event11 
+I: Bus=0003 Vendor=06a3 Product=0bac Version=0111
+N: Name="Saitek Saitek Pro Flight Yoke"
+H: Handlers=event12 js1 
+
+Here you can see my yoke is js1. Keep in mind that the device number will likely
+depend on the order in which you plug things in (i.e. might not always be the
+same).
+
+Now, you need to find out which axis numbers are used for the hat switch. For
+this, you can use jstest (apt-get install joystick  if you have to):
+
+wilmer@ruby:~/src/bitlbee/devel$ jstest --event /dev/input/js1
+Driver version is 2.1.0.
+Joystick (Saitek Saitek Pro Flight Yoke) has 7 axes (X, Y, Z, Rx, Ry, Hat0X, Hat0Y)
+and 23 buttons (Trigger, ThumbBtn, ThumbBtn2, TopBtn, TopBtn2, PinkieBtn, BaseBtn, BaseBtn2, BaseBtn3, BaseBtn4, BaseBtn5, BaseBtn6, BtnDead, BtnA, BtnB, BtnC, (null), (null), (null), (null), (null), (null), (null)).
+Testing ... (interrupt to exit)
+Event: type 129, time 57632408, number 0, value 0
+[...]
+Event: type 129, time 57632408, number 22, value 0
+
+Note how in this output axes 5 and 6 at the end of the list are already
+marked as the hat switches. However, these are just hardcoded names
+for axis numbers that assume a standard joystick. (For example the Z
+axis is my throttle, and Rx is prop. Those names make little sense.)
+
+So to be 100% sure, keep running jstest and play with your hat switch:
+
+Event: type 2, time 57944824, number 6, value -32767
+Event: type 2, time 57945064, number 6, value 0
+Event: type 2, time 57945480, number 6, value 32767
+Event: type 2, time 57945696, number 6, value 0
+Event: type 2, time 57946088, number 5, value -32767
+Event: type 2, time 57946296, number 5, value 0
+Event: type 2, time 57946560, number 5, value 32767
+Event: type 2, time 57946760, number 5, value 0
+
+So it looks like I'm lucky, the hat switch axes are really 5 and 6. Maybe your
+joystack has multiple hat switches (or other axes that you want to map to
+buttons). Find them all, uhat can handle any number of axes.
+
+
+uinput permissions
+==================
+
+Before you try running uhat, check permissions on /dev/uinput:
+
+wilmer@peer:~$ ls -l /dev/uinput 
+crw------T 1 root root 10, 223 feb 29 10:37 /dev/uinput
+
+By default on most systems, /dev/uinput seems to be restricted to root. You can
+fix this either by running uhat as root, or by changing permissions on the
+device.
+
+For the latter, I used the following udev rule:
+
+wilmer@peer:~$ cat /etc/udev/rules.d/70-uinput.rules 
+KERNEL=="uinput", GROUP="plugdev"
+
+But one could argue that running uhat as root is better than exposing uinput to
+non-root users. Up to you.
+
+
+Run uhat
+========
+
+You have all the information you need now. Just run uhat:
+
+wilmer@ruby:~/src/uhat$ ./uhat -Dd /dev/input/js1 5 6   
+
+If you immediately get your prompt back, you should be good. uhat is running
+in the background and should keep running until you plug out your joystick.
+Now, you can use the command above to find your new virtual joystick device,
+which will now show:
+
+N: Name="uhat"
+H: Handlers=event13 js2 
+
+js2. If you're curious, you can use jstest on /dev/input/js2, or just fire
+up your flight simulator and enjoy your working hat switch!
+
+
+udev rule
+=========
+
+The most convenient way to start uhat is to have udev do it for you. With
+the right rule definition, udev can automatically do this for you as soon as
+you plug in your yoke/joystick. I'm using this rule:
+
+wilmer@ruby:/etc/udev$ cat rules.d/70-hatswitch.rules
+SUBSYSTEM=="input", ACTION=="add", ENV{DEVNAME}=="*/js[0-9]*", \
+ATTRS{idVendor}=="06a3", ATTRS{idProduct}=="0bac", \
+RUN+="/bin/sleep 3", \
+RUN+="/usr/local/bin/uhat -Dd $env{DEVNAME} 5 6"
+
+The joystick device path is automatically filled in, but of course you do still
+need to follow the steps above to find the hat switch axes. Also, if you have
+a different kind of yoke, don't forget to update the USB vendor/product ID. You
+can find the ID in /proc/bus/input/devices or lsusb.
+
+The purpose of the sleep before starting uhat is to add some delay before
+starting uhat, to avoid races with other joystick devices (rudder pedals),
+causing variation in joystick device numbering.
+
+This will run uhat as root. If you choose to use this option, of course you
+don't need the uinput udev rule mentioned above.
+
+
+Contact
+=======
+
+If you have problems with uhat, you can contact me at wilmer@gaast.net. But
+unfortunately I can't respond to all messages I receive, and I definitely am
+not going to help anyone with debugging their udev rules or configuring their
+flightsim, etc.
+
+http://gaa.st/uhat
