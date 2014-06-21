@@ -141,7 +141,7 @@ int main( int argc, char *argv[] )
 	struct js_event ev;
 	while( read( js, &ev, sizeof( ev ) ) == sizeof( ev ) )
 	{
-		if( ev.type == JS_EVENT_AXIS || ev.type == JS_EVENT_INIT )
+		if( ev.type & JS_EVENT_AXIS)
 		{
 			for( i = 0; i < nax; i ++ )
 			{
