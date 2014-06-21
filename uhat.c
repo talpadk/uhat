@@ -194,4 +194,14 @@ void send_event( int btn, int state )
 		perror( "write" );
 		exit( 1 );
 	}
+	
+	//Sync information NOW
+	oev.type = EV_SYN;
+	oev.code = SYN_REPORT;
+	oev.value = 0; //Is not used but I clear it anyway
+	if( write( uinp_fd, &oev, sizeof( oev ) ) != sizeof( oev ) )
+	{
+		perror( "write" );
+		exit( 1 );
+	}
 }
