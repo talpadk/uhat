@@ -60,7 +60,6 @@ int main( int argc, char *argv[] )
 			bg = 1;
 			break;
 		case 'v':
-			/* Not using this for now. */
 			verbose = 1;
 			break;
 		default:
@@ -71,9 +70,10 @@ int main( int argc, char *argv[] )
 	nax = argc - optind;
 	if( nax == 0 )
 	{
-		printf( "Usage: %s [-d <js device>] [-D] <axes...>\n"
+		printf( "Usage: %s [-d <js device>] [-D] [-v] <axes...>\n"
 		        "\n"
 		        "  -D Run in background\n"
+		        "  -v Verbose/debugging mode\n"
 		        "  <axes...> list of axis numbers to be mapped to buttons.\n"
 		        "\n"
 		        "See README for more information.\n",
@@ -180,6 +180,11 @@ void do_axis( struct js_event *ev, struct axis *ax )
 void send_event( int btn, int state )
 {
 	struct input_event oev;
+	
+	if ( verbose )
+	{
+		printf("Sending button %d state %d\n", btn, state);
+	}
 	
 	oev.type = EV_KEY;
 	oev.code = BTN_JOYSTICK + btn;
