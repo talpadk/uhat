@@ -170,7 +170,7 @@ void do_axis( struct js_event *ev, struct axis *ax )
 	/* De-press the old state first, if there was any. */
 	if( ax->state != 0 )
 		send_event( ax->btn_base + ( ax->state < 0 ? 0 : 1 ), 0 );
-	/* De-press the old state first, if there was any. */
+	/* Send new state, if there is any. */
 	if( new != 0 )
 		send_event( ax->btn_base + ( new < 0 ? 0 : 1 ), 1 );
 	
